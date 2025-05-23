@@ -36,7 +36,8 @@ Some of the Advance approaches used in this Project include
 ###1. Rank Top 2 customers by total sales within each territory
 The top two customers based on on total sales for each country are 
 
-![Image](https://github.com/user-attachments/assets/a80d8ca2-c0e6-4bd5-a9d2-2c7d2b349143)
+![Image](https://github.com/user-attachments/assets/dec49f2c-a875-4c83-bfed-271ad0c86ab8)
+
 1. Australia
    -  Xu Jaclyn  = $9,613.63
    -  Xu Rafael =  
