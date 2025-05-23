@@ -36,7 +36,7 @@ Some of the Advance approaches used in this Project include
 ###1. Rank Top 2 customers by total sales within each territory
 The top two customers based on on total sales for each country are 
 
-![Image](https://github.com/user-attachments/assets/dec49f2c-a875-4c83-bfed-271ad0c86ab8)
+[![Image](https://github.com/user-attachments/assets/dec49f2c-a875-4c83-bfed-271ad0c86ab8)](https://github.com/Pucheo-Gideon/Advance-SQL-Analytics/commit/08803eb32f6c0cfea3938a16b814c386121237c7)
 
 1. Australia
    -  Xu Jaclyn  = $9,613.63
