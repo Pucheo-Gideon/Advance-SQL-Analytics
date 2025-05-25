@@ -34,10 +34,28 @@ Some of the Advance approaches used in this Project include
 
 # Retail Transactions business Questions 
 ###1. Rank Top 2 customers by total sales within each territory
-The top two customers based on on total sales for each country are 
+```sql 
+SELECT * 
+FROM [Customers ]
 
-[![Image](https://drive.google.com/file/d/1p6KmMpUoPcjaL3GA_HpDz66D1bRvehEi/view?usp=drive_link)
+SELECT * --  Using the WHERE Clause, Fetch only the Top 5 Customers by Sales Per Territory
+FROM (
+		SELECT *, -- Ranked all The Customers based on their Total Transaction value 
+				DENSE_RANK() OVER (PARTITION BY Sales.Customers_Country ORDER BY Sales.Sales DESC) AS Ranked
+		FROM (
+				SELECT  -- Get the Customers' Name, Country and Total Sales 
+						C.FullName,
+						C.CustomerCountry AS Customers_Country,
+						ROUND(SUM(S.SalesAmount),2) AS Sales
+				FROM [Customers ] AS C
+				INNER JOIN Sales AS S
+				ON S.CustomerKey = C.CustomerKey
+				GROUP BY C.FullName, C.CustomerCountry
+		) AS Sales
+) AS Ranked_Customers
+WHERE Ranked_Customers.Ranked <= 2
 
-1. Australia
-   -  Xu Jaclyn  = $9,613.63
-   -  Xu Rafael =  
+```
+
+[![Result one - Customers](./image/Top 2 customers Per country.png)
+
