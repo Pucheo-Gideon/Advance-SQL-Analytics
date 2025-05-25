@@ -33,7 +33,7 @@ Some of the Advance approaches used in this Project include
 6.  Value Functions Such as NTILE, FIRST_VALUE, LAST_VALUE ()
 
 # Retail Transactions business Questions 
-###1. Rank Top 2 customers by total sales within each territory
+### 1. Rank Top 2 customers by total sales within each territory
 ```sql 
 SELECT * 
 FROM [Customers ]
@@ -57,5 +57,37 @@ WHERE Ranked_Customers.Ranked <= 2
 
 ```
 
-[![Result one](./images/2.Customers-who-made-single-purchases.png)
+![Result one](./images/Top-2-customers-per-country.png)
 
+
+### 2. Fetch the customers who made just one purchase
+```sql
+
+SELECT Purchases.* 
+FROM (
+      -- This subquery in combination with Row_Number() and LEAD?() Identifies customers based on their number of purchases per Order. 
+      -- Based on the Logic, "None" is return for customers who didn't make another purchase after the first or their Last purchase, 
+      -- The "SaleOrderNumbers" is return for customers who made further purchases after the first.
+      SELECT 
+            S.SalesOrderNumber,
+            C.FullName,
+            S.ProductKey,
+            P.ProductName,
+            ROW_NUMBER () OVER(PARTITION BY S.SalesOrderNumber ORDER BY S.SalesOrderNumber ) AS No_of_Purchase,
+            LEAD(S.SalesOrderNumber, 1, 'None') OVER(PARTITION BY S.SalesOrderNumber ORDER BY S.SalesOrderNumber DESC) AS "Next_Purchase?"
+      FROM Sales  AS s
+      INNER JOIN [Customers ] AS c
+      ON S.CustomerKey = C.CustomerKey
+      INNER JOIN Product AS  P 
+      ON P.ProductKey = S.ProductKey
+      GROUP BY S.SalesOrderNumber,
+        C.FullName,
+        S.ProductKey,
+        P.ProductName
+
+ ) AS Purchases 
+
+WHERE Purchases.No_of_Purchase = 1 
+AND Purchases.[Next_Purchase?] = 'None'
+```
+![Result two](./images/2.Customers-who-made-single-purchases.png)
