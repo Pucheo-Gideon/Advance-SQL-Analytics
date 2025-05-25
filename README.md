@@ -57,5 +57,5 @@ WHERE Ranked_Customers.Ranked <= 2
 
 ```
 
-![Result one](./images/Top 2 customers Per country.png)
+[![Result one](./images/2.Customers-who-made-single-purchases.png)
 
