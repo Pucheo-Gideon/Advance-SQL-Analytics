@@ -93,3 +93,56 @@ AND Purchases.[Next_Purchase?] = 'None'
 
 ![3 - result set](https://github.com/user-attachments/assets/4b205846-ea6f-4c03-a2d3-7e3213507cdb)
 
+### 3. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
+```sql
+WITH CTE_Purchase_Days AS (
+SELECT
+		
+		S.CustomerKey, 
+		C.FullName, 
+		s.OrderDate AS OrderDate,
+		S.SalesAmount,
+		LEAD(s.OrderDate) OVER(PARTITION BY S.CustomerKey ORDER BY s.OrderDate) AS NextDay
+FROM [Customers ]  AS C
+INNER JOIN Sales AS S 
+ON S.CustomerKey = C.CustomerKey
+),
+
+Calculated_Days_Bewtween_Purchases AS (
+SELECT  pd.CustomerKey,
+		pd.FullName,
+		FORMAT(pd.OrderDate, 'dd-MMM-yyyy') AS OrderDate,
+		FORMAT(pd.NextDay, 'dd-MMM-yyyy') AS Next_OrderDate,
+		ROUND(SUM(pd.SalesAmount),2) as Avg_SalesAmount,
+	    AVG(DATEDIFF(DAY, pd.OrderDate,pd.NextDay))  AS DaysBetween
+FROM CTE_Purchase_Days AS pd
+GROUP BY pd.CustomerKey,
+		pd.FullName,
+		FORMAT(pd.OrderDate, 'dd-MMM-yyyy') ,
+		FORMAT(pd.NextDay, 'dd-MMM-yyyy')
+)
+
+SELECT 
+		CASE 
+            WHEN DaysBetween <= 30 THEN '0-1 Month'
+            WHEN DaysBetween BETWEEN 31 AND 90 THEN '1-3 Months'
+            WHEN DaysBetween BETWEEN 91 AND 180 THEN '3-6 Months'
+            WHEN DaysBetween BETWEEN 181 AND 270 THEN '6-9 Months'
+            WHEN DaysBetween BETWEEN 271 AND 365 THEN '9-12 Months'
+            ELSE '1 Year and Above'
+        END AS Customers_Purchase_Interval,
+		COUNT(*) Purchase_Count,
+		ROUND(AVG(cd.Avg_SalesAmount),2) AS Average_Purchase_Value
+FROM Calculated_Days_Bewtween_Purchases AS cd
+GROUP BY CASE 
+            WHEN DaysBetween <= 30 THEN '0-1 Month'
+            WHEN DaysBetween BETWEEN 31 AND 90 THEN '1-3 Months'
+            WHEN DaysBetween BETWEEN 91 AND 180 THEN '3-6 Months'
+            WHEN DaysBetween BETWEEN 181 AND 270 THEN '6-9 Months'
+            WHEN DaysBetween BETWEEN 271 AND 365 THEN '9-12 Months'
+            ELSE '1 Year and Above'
+        END
+ORDER BY 3 DESC
+```
+
+![5](https://github.com/user-attachments/assets/1c6fd84e-324b-45cf-957a-97a8204d5940)
