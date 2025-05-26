@@ -57,7 +57,7 @@ WHERE Ranked_Customers.Ranked <= 2
 
 ```
 
-![Result one](./images/Top-2-customers-per-country.png)
+![1](https://github.com/user-attachments/assets/ec60e40d-f3ec-40c1-952a-a41e93050b36)
 
 
 ### 2. Fetch the customers who made just one purchase
@@ -90,4 +90,6 @@ FROM (
 WHERE Purchases.No_of_Purchase = 1 
 AND Purchases.[Next_Purchase?] = 'None'
 ```
-![Result two](./images/2.Customers-who-made-single-purchases.png)
+
+![3 - result set](https://github.com/user-attachments/assets/4b205846-ea6f-4c03-a2d3-7e3213507cdb)
+
