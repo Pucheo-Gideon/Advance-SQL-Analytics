@@ -59,15 +59,30 @@ WHERE Ranked_Customers.Ranked <= 2
 
 ![1](https://github.com/user-attachments/assets/ec60e40d-f3ec-40c1-952a-a41e93050b36)
 
+| FullName | 	Customers_Country | 	Sales |  	Ranked |
+|----------| ---------------------| ----------| ---------------|
+| Xu, Jaclyn |	Australia |	9613.63 | 1 |
+| Xu, Rafael |	Australia |	8786.19 | 	2 |
+| Bryant, Isabella |	Canada |	6060.5 | 	1 |
+| Miller, Chloe |	Canada |	6056.51 |	2 |
+| Nara, Nichole |	France |	13295.38 |	1 |
+| Henderson, Kaitlyn |	France	| 13294.27 |	2 |
+| Xu, Franklin |	Germany |	11284.97 |  	1 |
+| Vazquez, Ricky |	Germany | 10580.35 |	2 |
+| Sanz, Marie |	United Kingdom |	8460.25 |	1 |
+| Patel, Emmanuel |	United Kingdom | 	8451.26 |	2 |
+| Hernandez, Jordan |	United States |	7234.26 |	1 |
+| Richardson, Trinity |	United States |	6719.06 |	2 |
 
+#### Purpose
+The goal of this query is to enable senior stakeholders, as well as marketing and sales representatives, to identify the top-performing customers by total sales within each sales territory. This is meant to support data-driven decision-making for targeted marketing campaigns, relationship management, and customer loyalty strategies
+
+____________________________________________________________________
 ### 2. Fetch the customers who made just one purchase
 ```sql
 
 SELECT Purchases.* 
 FROM (
-      -- This subquery in combination with Row_Number() and LEAD?() Identifies customers based on their number of purchases per Order. 
-      -- Based on the Logic, "None" is return for customers who didn't make another purchase after the first or their Last purchase, 
-      -- The "SaleOrderNumbers" is return for customers who made further purchases after the first.
       SELECT 
             S.SalesOrderNumber,
             C.FullName,
@@ -93,7 +108,65 @@ AND Purchases.[Next_Purchase?] = 'None'
 
 ![3 - result set](https://github.com/user-attachments/assets/4b205846-ea6f-4c03-a2d3-7e3213507cdb)
 
-### 3. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
+**Approach for solving the questions** 
+-	This subquery in combination with Row_Number() and LEAD?() Identifies customers based on their number of purchases per Order. 
+-	Based on the Logic, "None" is return for customers who didn't make another purchase after the first or their Last purchase, 
+-	The "SaleOrderNumbers" is return for customers who made further purchases after the first.
+________________________________________
+### 3. What is the total Distribution and Percentage of One time Buyers Per Country
+
+```sql
+WITH OneTimeBuyers AS (
+SELECT 
+		S.SalesOrderNumber,
+		C.CustomerKey,
+		C.FullName,
+		C.CustomerCountry,
+		COUNT(S.SalesOrderNumber) AS PurchaseCOunt
+FROM Sales  AS s
+INNER JOIN [Customers ] AS c
+ON S.CustomerKey = C.CustomerKey
+GROUP BY S.SalesOrderNumber,
+		 C.CustomerKey,
+		 C.FullName,
+		 C.CustomerCountry
+HAVING COUNT(S.SalesOrderNumber) = 1
+
+), 
+CountryCount AS (
+
+	SELECT CustomerCountry,
+	COUNT(*) As SinglePurchaseCount
+	FROM OneTimeBuyers 
+	GROUP BY CustomerCountry
+)
+SELECT 
+		CC.CustomerCountry, 
+		cc.SinglePurchaseCount,
+		ROUND(CAST(cc.singlePurchaseCount * 100.0/ (SELECT COUNT(*) FROM OneTimebuyers) AS FLOAT),2) AS [% of Single Purchase]
+FROM CountryCount AS CC
+ORDER BY 2 DESC
+```
+
+### Result 
+
+| CustomerCountry |	SinglePurchaseCount |	% of Single Purchase |
+| ---------------- |------------------------| -----------------------|
+| Australia |	3032 |	32.17 |
+| United States |	2988 |	31.7 |
+| United Kingdom |	922 |	9.78 |
+| Canada |	894 |	9.49 |
+| France |	796 |	8.45 |
+| Germany |	793 |	8.41 |
+
+#### Insight 🔍 
+Australia has the highest proportion of One time buyers with over 32%. The United States follows closely behind with almost an equivalent margin of 31% of one time buyers. 
+
+#### Purpose 
+The purpose of this query is to help stakeholders identify the distribution of one-time customers across different countries, providing insight into where customer retention may be weakest. By revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
+
+__________________
+### 4. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
 ```sql
 WITH CTE_Purchase_Days AS (
 SELECT
@@ -123,7 +196,7 @@ GROUP BY pd.CustomerKey,
 )
 
 SELECT 
-		CASE 
+	CASE 
             WHEN DaysBetween <= 30 THEN '0-1 Month'
             WHEN DaysBetween BETWEEN 31 AND 90 THEN '1-3 Months'
             WHEN DaysBetween BETWEEN 91 AND 180 THEN '3-6 Months'
@@ -145,4 +218,16 @@ GROUP BY CASE
 ORDER BY 3 DESC
 ```
 
-![5](https://github.com/user-attachments/assets/1c6fd84e-324b-45cf-957a-97a8204d5940)
+![5](https://github.com/user-attachments/assets/0c9859e5-7c25-4f65-9b25-301b5db4da7c)
+
+| Customers_Purchase_Interval	| Purchase_Count |	Average_Purchase_Value|
+|-------------------------------| ---------------| ---------------------------|
+| 9-12 Months |	919 |	1676.23 |
+| 6-9 Months |	841 |	881.67 |
+| 0-1 Month | 	18355 |	766.81 |
+| 1 Year and Above |	21386 |	594.65 |
+| 3-6 Months | 1289 |	376.86 |
+| 1-3 Months |	1091 |	157.22 |
+
+#### Insight 🔍
+Customers with 9-12 months interval have the highest average order value of $1,676. Followed by customers whose purchases happens after 6-9months with an average order value of $881.67. However Customers with purchase intervals 0-1month and 1 Year and above above have highest number of purchase frequency, both scoring 18,355 and 21,386 in purchase frequency respectively.
