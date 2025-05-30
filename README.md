@@ -183,7 +183,7 @@ The intent of this query is to enable stakeholders have a clear picture of consu
 
 
 __________________
-### 5. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
+### 4. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
 ```sql
 WITH CTE_Purchase_Days AS (
 SELECT
@@ -247,5 +247,73 @@ ORDER BY 3 DESC
 #### 🔍 Insight
 Customers with purchase intervals of 9–12 months have the highest average order value at $1,676.23, followed by those purchasing every 6–9 months at $881.67. In contrast, customers purchasing most frequently—within 0–1 month and 1 year and above—record the highest purchase volumes at 18,355 and 21,386 respectively, but with lower average order values of $766.81 and $594.65
 
+
 #### 🎯 Why This Is Relevant
 This is meant to help stakeholders understand the relationship between purchase frequency and order value, revealing that less frequent buyers tend to spend more per transaction, while frequent buyers contribute more to overall sales volume. These patterns can inform segmentation strategies, such as nurturing high-value, infrequent buyers with personalized offers, while also reinforcing loyalty programs for frequent, lower-value buyers to sustain engagement and drive lifetime value.
+
+________________________________
+
+#### 5. What is the Percentage of customers whose total sales increased from their previous year 
+``` sql
+
+WITH Customer_Value AS (
+SELECT -- Step One: Create a CTE and aggregate each Customer total purchase value, grouped by Customer Name, Key and year 
+		C.CustomerKey,
+		c.FullName,
+		YEAR(S.OrderDate) AS Year,
+		SUM(s.SalesAmount) As Sales_Value
+FROM [Customers ] AS C
+INNER JOIN Sales AS S 
+ON C.CustomerKey = S.CustomerKey
+GROUP BY  C.FullName,
+		 YEAR(S.OrderDate),
+		 C.CustomerKey
+),
+
+Yearly_Value AS (
+SELECT	-- Step Two: Create a second CTE. Using SUM Window Function, Partition aggregated sales value per customer by year and customer key 
+		Cv.CustomerKey,
+		Cv.FullName, 
+		CV.Year,
+		ROUND(CAST(SUM(Cv.Sales_value) OVER (PARTITION BY   CV.Year, Cv.CustomerKey ORDER BY CV.Year, Cv.Sales_value) AS FLOAT),2) AS Customer_Yearly_Value,
+		DENSE_RANK() OVER (PARTITION BY  Cv.CustomerKey ORDER BY CV.Year,  Cv.Sales_Value) AS Rank
+FROM Customer_Value AS Cv
+) ,
+
+Current_Year_vs_Previous AS (
+SELECT *,			-- Step Three: Create a third CTE. Using LAG function, fetch each customers previous year total purchase value. Using LAST_VALUE function 
+					-- within each customer partition,grab the last total purchase value within that window, representing customer's latest year total purchase value
+		LAG(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Prev_Year_Value,
+		LAST_VALUE(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Current_Year_Value
+FROM Yearly_Value  AS Yv
+),
+
+--- Step Four: Fetch from the third chained CTE the Customers'Name, Previous and Latest Year Sales Value. Using the WHERE Clause filter and return only the Customers whose 
+--- Current Year total purchase value is greater than the previous total Purchase value
+Current_Greater_Than_Previous AS (
+SELECT  Cp.FullName, 
+		Cp.Prev_Year_value, 
+		Cp.Current_Year_Value
+FROM Current_Year_vs_Previous AS Cp
+WHERE Cp.Prev_Year_value IS NOT NULL
+	  AND Cp.Current_Year_Value > Cp.Prev_Year_value
+	  )
+
+SELECT COUNT(*) AS High_YoY_Customers,
+		ROUND(CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM [Customers ]) AS FLOAT),2) AS Prct_of_High_YoY_Customers
+		--(SELECT COUNT(*) FROM [Customers ]) As Total_Customers
+FROM Current_Greater_Than_Previous 
+```
+
+##### Result 
+| High_YoY_Customers |	Prct_of_High_YoY_Customers |
+| ------------------- | ----------------------------|
+| 2478	| 13.4 |
+
+#### Insight 🔍
+Out of 18,000+ customers, only 2,478 (13.4%) showed increased year-over-year spending - meaning 9 out of 10 customers spent less than the previous period or don't even returned for a purchase.
+
+#### Why is this critical?
+This signals dangerous over-reliance on new customer acquisition (costing 5-25x more than retention) while 86.6% of existing customers are actively disengaging - a revenue leak that threatens long-term profitability unless addressed through targeted loyalty strategies.
+
+
