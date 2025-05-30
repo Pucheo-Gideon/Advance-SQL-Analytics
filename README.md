@@ -74,8 +74,11 @@ WHERE Ranked_Customers.Ranked <= 2
 | Hernandez, Jordan |	United States |	7234.26 |	1 |
 | Richardson, Trinity |	United States |	6719.06 |	2 |
 
-#### Purpose
-The goal of this query is to enable senior stakeholders, as well as marketing and sales representatives, to identify the top-performing customers by total sales within each sales territory. This is meant to support data-driven decision-making for targeted marketing campaigns, relationship management, and customer loyalty strategies
+#### 🔍 Insight
+The query reveals the top two highest-spending customers in each country, with notable leaders such as Nichole Nara in France and Franklin Xu in Germany, both generating sales above $11,000. The results show a relatively close margin between the first and second-ranked customers in most territories, indicating a competitive customer base in terms of spending. Across all regions, these top customers significantly contribute to total sales performance.
+
+#### 🎯 Why This Is Relevant
+Identifying the top-performing customers by territory helps stakeholders recognize high-value individuals who drive substantial revenue. This insight supports strategic decisions around personalized relationship management, loyalty programs, and territory-specific marketing. It also helps sales teams prioritize customer retention efforts, ensuring that the business continues to nurture and reward its most valuable clients.
 
 ____________________________________________________________________
 ### 2. Fetch the customers who made just one purchase
@@ -105,13 +108,6 @@ FROM (
 WHERE Purchases.No_of_Purchase = 1 
 AND Purchases.[Next_Purchase?] = 'None'
 ```
-
-![3 - result set](https://github.com/user-attachments/assets/4b205846-ea6f-4c03-a2d3-7e3213507cdb)
-
-**Approach for solving the questions** 
--	This subquery in combination with Row_Number() and LEAD?() Identifies customers based on their number of purchases per Order. 
--	Based on the Logic, "None" is return for customers who didn't make another purchase after the first or their Last purchase, 
--	The "SaleOrderNumbers" is return for customers who made further purchases after the first.
 ________________________________________
 ### 3. What is the total Distribution and Percentage of One time Buyers Per Country
 
@@ -160,13 +156,34 @@ ORDER BY 2 DESC
 | Germany |	793 |	8.41 |
 
 #### Insight 🔍 
-Australia has the highest proportion of One time buyers with over 32%. The United States follows closely behind with almost an equivalent margin of 31% of one time buyers. 
+Australia has the highest share of one-time buyers at 32.17%, closely followed by the United States at 31.7%. This suggests that these two markets may have retention challenges, with a significant portion of customers not returning after their first purchase.
 
-#### Purpose 
+#### 🎯Why is this relevant?
 The purpose of this query is to help stakeholders identify the distribution of one-time customers across different countries, providing insight into where customer retention may be weakest. By revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
 
 __________________
-### 4. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
+
+### 3. What is the total Distribution and Percentage of frequent Buyers Per Country
+
+
+| CustomerCountry |	Return_Purchases |	% of Single Purchase |
+| --------------- | ---------------------| -------------------------- |
+| United States |	6213 | 	36 |
+| Australia	| 3510	 | 20.34 |
+| Canada |	2276 |	13.19 |
+| United Kingdom |	2025 |	11.73 |
+| Germany |	1619 |	9.38 |
+| France |	1615 |	9.36 |
+
+#### 🔍Insight 
+The United States leads in terms of repeat purchases, accounting for 36% of all return purchases—16 percentage points higher than Australia, the next closest territory at 20.34%. Canada follows in third place with 13.19%. A particularly valuable insight is that although Canada ranked fourth in the number of one-time buyers, it ranks third in return purchases, indicating a solid base of loyal customers despite a relatively high drop-off rate. This contrast suggests opportunities to further nurture and retain Canadian customers, who show strong potential for loyalty once engaged.
+
+#### 🎯Why is this relevant ?
+The intent of this query is to enable stakeholders have a clear picture of consumers reception and perception of their products by measure of frequency. By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for informing regional retention strategies, allocating marketing resources effectively, and strengthening long-term customer relationships where the brand is gaining traction.
+
+
+__________________
+### 5. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
 ```sql
 WITH CTE_Purchase_Days AS (
 SELECT
@@ -218,8 +235,6 @@ GROUP BY CASE
 ORDER BY 3 DESC
 ```
 
-![5](https://github.com/user-attachments/assets/0c9859e5-7c25-4f65-9b25-301b5db4da7c)
-
 | Customers_Purchase_Interval	| Purchase_Count |	Average_Purchase_Value|
 |-------------------------------| ---------------| ---------------------------|
 | 9-12 Months |	919 |	1676.23 |
@@ -229,5 +244,8 @@ ORDER BY 3 DESC
 | 3-6 Months | 1289 |	376.86 |
 | 1-3 Months |	1091 |	157.22 |
 
-#### Insight 🔍
-Customers with 9-12 months interval have the highest average order value of $1,676. Followed by customers whose purchases happens after 6-9months with an average order value of $881.67. However Customers with purchase intervals 0-1month and 1 Year and above above have highest number of purchase frequency, both scoring 18,355 and 21,386 in purchase frequency respectively.
+#### 🔍 Insight
+Customers with purchase intervals of 9–12 months have the highest average order value at $1,676.23, followed by those purchasing every 6–9 months at $881.67. In contrast, customers purchasing most frequently—within 0–1 month and 1 year and above—record the highest purchase volumes at 18,355 and 21,386 respectively, but with lower average order values of $766.81 and $594.65
+
+#### 🎯 Why This Is Relevant
+This is meant to help stakeholders understand the relationship between purchase frequency and order value, revealing that less frequent buyers tend to spend more per transaction, while frequent buyers contribute more to overall sales volume. These patterns can inform segmentation strategies, such as nurturing high-value, infrequent buyers with personalized offers, while also reinforcing loyalty programs for frequent, lower-value buyers to sustain engagement and drive lifetime value.
