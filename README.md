@@ -81,7 +81,68 @@ The query reveals the top two highest-spending customers in each country, with n
 Identifying the top-performing customers by territory helps stakeholders recognize high-value individuals who drive substantial revenue. This insight supports strategic decisions around personalized relationship management, loyalty programs, and territory-specific marketing. It also helps sales teams prioritize customer retention efforts, ensuring that the business continues to nurture and reward its most valuable clients.
 
 ____________________________________________________________________
-### 2. Fetch the customers who made just one purchase
+
+### 2.Analyze customer behavior using Recency,Frequency, Monetary value modeling and report the RFM scores for all customers
+```sql
+--- Declare Variable for your benchmark Date
+DECLARE @Today AS Date  = '2024-01-01';
+
+WITH Base AS (
+	SELECT	
+			--- The Recency Test
+			CustomerKey, 
+			CAST(MAX(OrderDate) AS DATE) AS Most_recent_purchase_date, 
+			-- Get the recency score
+			DATEDIFF(DAY, CAST(MAX(OrderDate) AS DATE),  @Today) AS Recency_Score, 
+			--Get the Frequency Score
+			COUNT(SalesOrderNumber) AS Frequency_score,
+			-- Get The Monetary_Value 
+			SUM(SalesAmount) AS Monetary_Value
+	FROM Sales
+GROUP BY CustomerKey
+),
+
+RFM_Scores AS (
+	SELECT 
+		CustomerKey, 
+		Recency_Score,
+		NTILE(5) OVER (ORDER BY Recency_Score DESC) AS R,
+		Frequency_Score,
+		NTILE(5) OVER (ORDER BY Frequency_Score) AS F, 
+		Monetary_Value,
+		NTILE(5) OVER (ORDER BY Monetary_Value) AS M
+	FROM Base
+WHERE Monetary_Value IS NOT NULL
+)
+
+SELECT 
+		(R  + F + M)/ 3 AS RFM_Grouping,
+		COUNT(RFM_Scores.customerKey) as Total_Customers,
+		CAST(SUM(Monetary_Value) AS DECIMAL(16,2)) AS Total_Revenue, 
+		CAST (AVG(Monetary_Value) AS DECIMAL(16,2)) AS Avg_Revenue
+FROM RFM_Scores
+GROUP BY 	(R  + F + M)/ 3 
+ORDER BY 1 DESC
+
+```
+
+| RFM_Grouping	| Total_Customers	| Total_Revenue	| Avg_Revenue |
+| --------------| ----------------------| ------------- | ------------|
+| 5 |	460 | 	2733982.11 | 	5943.44 |
+| 4 |	3769 |	12600402.49 |	3343.17 |
+| 3 |	5570 |	9793167.54 |	1758.20 |
+| 2 |	5671 |	3889292.59 |	685.82 |
+| 1 |	2405 |	169605.00 |	70.52 |
+
+### Results 
+Data shows that newest customers (RFM Group 5) — just 427 people — delivered:
+💰 $5,993 average spend (88% higher than all other segments combined!)
+🚀 $2.56M total revenue (outpacing groups 2x their size)
+
+## Business Implication?
+ This result from the data establishes the fact that the business's freshest leads are it's HIGHEST-VALUE customers. Losing them equates to losing 20%+ of revenue base overnight and their spending  behavior holds clues to replicating success
+
+### 3. Fetch the customers who made just one purchase
 ```sql
 
 SELECT Purchases.* 
@@ -109,7 +170,7 @@ WHERE Purchases.No_of_Purchase = 1
 AND Purchases.[Next_Purchase?] = 'None'
 ```
 ________________________________________
-### 3. What is the total Distribution and Percentage of One time Buyers Per Country
+### 4. What is the total Distribution and Percentage of One time Buyers Per Country
 
 ```sql
 WITH OneTimeBuyers AS (
@@ -155,15 +216,15 @@ ORDER BY 2 DESC
 | France |	796 |	8.45 |
 | Germany |	793 |	8.41 |
 
-#### Insight 🔍 
+#### Results 🔍 
 Australia has the highest share of one-time buyers at 32.17%, closely followed by the United States at 31.7%. This suggests that these two markets may have retention challenges, with a significant portion of customers not returning after their first purchase.
 
-#### 🎯Why is this relevant?
+#### 🎯Business implication?
 The purpose of this query is to help stakeholders identify the distribution of one-time customers across different countries, providing insight into where customer retention may be weakest. By revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
 
 __________________
 
-### 3. What is the total Distribution and Percentage of frequent Buyers Per Country
+### 5. What is the total Distribution and Percentage of frequent Buyers Per Country
 
 
 | CustomerCountry |	Return_Purchases |	% of Single Purchase |
@@ -175,15 +236,15 @@ __________________
 | Germany |	1619 |	9.38 |
 | France |	1615 |	9.36 |
 
-#### 🔍Insight 
+#### 🔍Result
 The United States leads in terms of repeat purchases, accounting for 36% of all return purchases—16 percentage points higher than Australia, the next closest territory at 20.34%. Canada follows in third place with 13.19%. A particularly valuable insight is that although Canada ranked fourth in the number of one-time buyers, it ranks third in return purchases, indicating a solid base of loyal customers despite a relatively high drop-off rate. This contrast suggests opportunities to further nurture and retain Canadian customers, who show strong potential for loyalty once engaged.
 
-#### 🎯Why is this relevant ?
+#### 🎯Business implication ?
 The intent of this query is to enable stakeholders have a clear picture of consumers reception and perception of their products by measure of frequency. By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for informing regional retention strategies, allocating marketing resources effectively, and strengthening long-term customer relationships where the brand is gaining traction.
 
 
 __________________
-### 4. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
+### 6. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
 ```sql
 WITH CTE_Purchase_Days AS (
 SELECT
@@ -253,7 +314,7 @@ This is meant to help stakeholders understand the relationship between purchase 
 
 ________________________________
 
-#### 5. What is the Percentage of customers whose total sales increased from their previous year 
+#### 7. What is the Percentage of customers whose total sales increased from their previous year 
 ``` sql
 
 WITH Customer_Value AS (
