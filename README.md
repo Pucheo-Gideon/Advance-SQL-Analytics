@@ -242,6 +242,77 @@ The United States leads in terms of repeat purchases, accounting for 36% of all 
 #### 🎯Business implication ?
 The intent of this query is to enable stakeholders have a clear picture of consumers reception and perception of their products by measure of frequency. By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for informing regional retention strategies, allocating marketing resources effectively, and strengthening long-term customer relationships where the brand is gaining traction.
 
+__________________
+
+### 6.Analyze the year-over-year (YoY) sales growth trends across different countries to identify which markets experienced the most significant recoveries or declines?
+```sql
+	-- Step One: Calculate the total sales and group by territory(Country) and Year
+WITH Territory_Sales AS (
+SELECT  C.CustomerCountry, 
+		YEAR(S.OrderDate) AS Year, 
+		ROUND(CAST(SUM(S.SalesAmount) AS FLOAT), 2) Total_Sales
+FROM Sales AS S
+INNER JOIN [Customers ] AS C
+ON S.CustomerKey = C.CustomerKey
+GROUP BY C.CustomerCountry, 
+		YEAR(S.OrderDate)
+
+),
+
+--- Step Two: Using the LAG Function, partititoned by each country and ordered by Year, fetch the previous Year Sales for each country
+Prev_Year_Sales AS (
+SELECT  *,
+	LAG(TS.Total_Sales) OVER(PARTITION BY TS.CustomerCountry ORDER BY TS.Year) AS Prev_Sales 
+FROM Territory_Sales AS TS
+) ,
+
+-- Step Three: Calculate the Year-over-Year Growth by subtracting Total Current Year Sales from Prev Year Sales and Dividing by Previous Years 
+YoY AS (
+SELECT *, 
+		Py.Total_Sales - Py.Prev_Sales AS Variance,
+		CAST(((Py.Total_Sales - Py.Prev_Sales)/Py.Prev_Sales) * 100.0  AS DECIMAL(16,2)) AS "YoY % ▼▲"
+FROM Prev_Year_Sales AS Py 
+)
+
+-- Step Four: Get the Countries, Year and YoY
+SELECT YoY.CustomerCountry,
+		YoY.Year,
+		YoY."YoY % ▼▲"
+FROM YoY
+```
+#### Methodology 
+- Aggregated Sales by Country and Year. Joined the Sales and Customers tables to link transactions to geographic territories
+- Retrieve Prior-Year Sales Using LAG() Window Functions. his created a column (Prev_Sales) containing the previous year’s sales for each country, enabling YoY comparisons
+- Compute Year-over-Year Growth by taing the variance of current year sales from the previous years and dividing by previous year sales and multiplied by 100 to get result as percentage  - [(Current_Year_Sales − Previous_Year_Sales) / Previous_Year_Sales] × 100
+
+#### Result 
+- 2022 Performance: France, Germany, and UK showed positive growth (52.90%, 15.56%, 26.54% respectively). Australia, Canada, and US experienced declines (-18.26%, -46.78%, -41.51%)
+  
+- 2023 Recovery/Expansion: All countries saw dramatic growth in 2023, with increases exceeding 100% YoY. The United States led with 278.79% growth. Canada and UK also showed particularly strong rebounds (250.30% and 205.83%)
+  
+- Also worth noting is that Countries that declined in 2022 saw the most dramatic rebounds in 2023 and France maintained consistent positive growth across both years.
+
+|CustomerCountry | 	Year	| YoY % ▼▲ |
+| --------------- | ----------- | -------- |
+| Australia |	2021 |	NULL |
+| Australia |	2022 |	-18.26 |
+| Australia	| 2023 |	107.66 |
+| Canada |	2021 |	NULL |
+| Canada |	2022 |	-46.78 |
+| Canada |	2023 |	250.30 |
+| France |	2021 |	NULL |
+| France |	2022 |	52.90 |
+| France |	2023 |	150.20 |
+| Germany |	2021 |	NULL |
+| Germany |	2022 |	15.56 |
+| Germany |	2023 |	199.32 |
+| United Kingdom |	2021 |	NULL |
+| United Kingdom |	2022 |	26.54 |
+| United Kingdom |	2023 |	205.83 |
+| United States |	2021 | 	NULL |
+| United States |	2022 |	-41.51 |
+| United States	| 2023 |	278.79 |
+
 
 __________________
 ### 6. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
@@ -377,4 +448,57 @@ Out of 18,000+ customers, only 2,478 (13.4%) showed increased year-over-year spe
 #### Why is this critical?
 This signals dangerous over-reliance on new customer acquisition (costing 5-25x more than retention) while 86.6% of existing customers are actively disengaging - a revenue leak that threatens long-term profitability unless addressed through targeted loyalty strategies.
 
+### 8. How effective were monthly campaigns at driving customer growth?
+```sql
+WITH Distinct_Customers AS  (
+
+	SELECT	
+		DATEPART(YEAR, OrderDate) AS Year, 
+		DATEPART(MONTH, OrderDate) AS Month_Number,
+		DATENAME(MONTH, OrderDate) AS Month_Name,
+		COUNT(DISTINCT Customerkey) AS Distinct_Customers
+	FROM Sales 
+	GROUP BY DATEPART(YEAR, OrderDate),
+		 DATEPART(MONTH, OrderDate), 
+		 DATENAME(MONTH, OrderDate) 
+	
+
+),
+
+--Step Two: In a CTE and using the LAG() function, get the previous month distribution of distinct customers. 
+Prev_Month_users AS (
+SELECT *, 
+	LAG( DC.Distinct_Customers) OVER( PARTITION BY DC.Year ORDER BY DC.Month_Number, DC.Year)  AS Prev_Month_Count
+FROM Distinct_Customers AS DC
+)
+
+-- Get the MoM % ▲▼ using the formula: (Current - Previous)/Previous
+SELECT
+      PM.Year, 
+      PM.Month_Name,
+      PM.Distinct_Customers,
+      ROUND((CAST((PM.Distinct_Customers - PM.Prev_Month_Count) AS FLOAT)/PM.Prev_Month_Count) * 100.0,2) AS "MoM % ▲▼"
+FROM Prev_Month_users AS PM
+```
+### 🔍 Key Insights
+#### 🚀 Explosive Growth in 2023
+- February 2023 saw a 195.3% MoM increase in MAU – a massive leap!
+- Sustained momentum: June 2023 (+24.66%), November 2023 (+8.28%).
+#### 📈📉 Seasonality & Volatility
+- Peaks: June was consistently strong:
+- 2021: +39.05% | 2022: +70.98% (🎯 Prime campaign months?)
+- Troughs: Mid-year slumps:
+- July 2021: -20% | July 2023: -12.76% (🌧️ Seasonal dip?)
+#### 🛠️ Stabilization Trend
+- 2023 had fewer wild swings vs. 2021–2022, suggesting:
+- Better user retention 📊
+- Optimized marketing spend 💰
+
+### Why this is Relevant 
+Tracking Monthly Active Users (MAU) growth is critical for businesses running recurring campaigns or promotions. By analyzing month-over-month (MoM) changes in distinct customers, we can quantify the effectiveness of marketing efforts, identify seasonal patterns, and pinpoint periods of exceptional growth or decline. This analysis covers January 2021 through December 2023, revealing how customer engagement evolved across 36 months—highlighting successes (like the 195% surge in February 2023) and areas needing intervention (such as March 2022’s -29.54% drop).
+
+#### Methodology
+1.	Aggregate Distinct Users: Counted unique CustomerKey values grouped by month and year using DATEPART and DATENAME.
+2.	Retrieve Prior Month Counts: Applied the LAG() window function to partition data by year and order by month, creating a Prev_Month_Count column for comparison.
+3.	Calculate MoM Growth: Computed percentage change using the formula: ((Current - Previous)/Previous) * 100.0
 
