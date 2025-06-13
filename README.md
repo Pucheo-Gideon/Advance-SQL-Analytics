@@ -74,12 +74,15 @@ WHERE Ranked_Customers.Ranked <= 2
 | Hernandez, Jordan |	United States |	7234.26 |	1 |
 | Richardson, Trinity |	United States |	6719.06 |	2 |
 
-#### 🔍 Insight
-The query reveals the top two highest-spending customers in each country, with notable leaders such as Nichole Nara in France and Franklin Xu in Germany, both generating sales above $11,000. The results show a relatively close margin between the first and second-ranked customers in most territories, indicating a competitive customer base in terms of spending. Across all regions, these top customers significantly contribute to total sales performance.
+#### 💡 Strategic Insights
+- Close Competition: Marginal gaps between #1 and #2 in most markets (e.g., France: $1.11 difference).
+- Revenue Powerhouses: Top customers drive 12-18% of territory sales (est.).
+- Global Consistency: All territories have clear high-value customer leaders.
 
-#### 🎯 Why This Is Relevant
-Identifying the top-performing customers by territory helps stakeholders recognize high-value individuals who drive substantial revenue. This insight supports strategic decisions around personalized relationship management, loyalty programs, and territory-specific marketing. It also helps sales teams prioritize customer retention efforts, ensuring that the business continues to nurture and reward its most valuable clients.
-
+#### 🎯 Business Impact: Customer-Centric Growth
+- Retention Priority: These customers are low-hanging fruit for revenue protection.
+- Upsell Potential: France/Germany’s top spenders ($11K+) may respond to premium offers.
+- Territory Strategy: Replicate success factors from top performers (e.g., Nichole Nara’s preferences).
 ____________________________________________________________________
 
 ### 2.Analyze customer behavior using Recency,Frequency, Monetary value modeling and report the RFM scores for all customers
@@ -502,3 +505,69 @@ Tracking Monthly Active Users (MAU) growth is critical for businesses running re
 2.	Retrieve Prior Month Counts: Applied the LAG() window function to partition data by year and order by month, creating a Prev_Month_Count column for comparison.
 3.	Calculate MoM Growth: Computed percentage change using the formula: ((Current - Previous)/Previous) * 100.0
 
+### 9.  What products achieve the highest positive MoM performance in 2021
+```sql 
+	
+ WITH Territory_Sales AS ( -- Join Sales table to the territory to retrieve Territory name. Aggregate sales for each territry and group by Country and Months
+ SELECT 
+		T.Country, 
+		MONTH(S.OrderDate) AS Month_Number,
+		DATENAME(MONTH, S.OrderDate) AS Month_Name,
+		ROUND(CAST(SUM(S.SalesAmount) AS FLOAT),2) AS Sales
+ FROM Sales AS S 
+ JOIN Territory AS T 
+ ON T.SalesTerritoryKey = S.SalesTerritoryKey
+ WHERE YEAR(S.OrderDate) = '2021'
+ GROUP	BY T.Country, 
+		MONTH(S.OrderDate),
+		DATENAME(MONTH, S.OrderDate)
+),
+
+Month_over_Month AS ( -- Get the previous month using the Lag Function. Get the Difference between current and previous month and divide by Previous Month to see the Month-over-Month in revenue performance 
+ SELECT Ts.Country,
+		Ts.Month_number,
+		Ts.Month_Name,
+		Ts.Sales,
+		LAG(Ts.Sales) OVER ( PARTITION BY  Ts.Country ORDER BY MONTH(TS.Month_Number) )AS Prev_Sales,
+		ROUND((Ts.Sales - LAG(Ts.Sales) OVER( PARTITION BY  Ts.Country ORDER BY MONTH(TS.Month_Number)))/ LAG(Ts.Sales) OVER ( PARTITION BY  Ts.Country ORDER BY MONTH(TS.Month_Number)) * 100.0,2) AS "MoM % ▲▼"
+ FROM Territory_Sales AS Ts
+ )
+ SELECT MoM.Country,
+		COUNT(*) AS "No_of_+ve_MoM"
+ FROM Month_over_Month  AS MoM
+ WHERE MoM."MoM % ▲▼" > 0
+ GROUP BY MoM.Country
+ ORDER BY 2 DESC
+```
+
+#### Result 
+| ProductName |	No of +ve MoM |
+|------------|----------------|
+| Road-150 Red, 52 | 	7 |
+| Road-150 Red, 56 | 	7 |
+| Road-150 Red, 62 |	6 |
+| Mountain-100 Black 38 |	6 |
+| Mountain-100 Black, 42 |	6 |
+| Road-650 Red, 48 |	6 |
+| Mountain-100 Black, 44 |	5 |
+| Mountain-100 Black, 48 |	5 |
+| Mountain-100 Silver, 42 |	5 |
+| Road-150 Red, 44 |	5 |
+| Road-150 Red, 48 |	5 |
+| Road-650 Black, 60 |	5 |
+
+
+#### 🚀 MoM Sales Performance: Key Insights
+📈 Top Performers (+ve MoM)
+🔥 Road Bikes Dominate: Road-150 Red (52, 56, 62) & Road-650 Red (48) lead with 6-7 months of growth in 2021. Mountain-100 Black (38, 42) also show strong consistency (6 +ve MoM).
+
+#### 💡 Business Implication:
+These products are the company's cash cows and scaling marketing & inventory for these models should sustain the positive Month-over-month streak for the subsequent fiscal year!
+
+#### 🔎 Methodology: Solving MoM Sales Variance
+- Data Preparation: oined the Sales table to Products to retrieve product names. Aggregated sales by product and month.
+
+- Month-over-Month Calculation: Used the LAG() function to compare each month’s revenue to the previous month. Calculated the percentage change:
+(Current Month − Previous Month) / Previous Month.
+
+- Filtered for positive MoM changes to identify growth trends. Counted occurrences per product to find consistent top performers. Repeated for negative MoM to flag declining products.
