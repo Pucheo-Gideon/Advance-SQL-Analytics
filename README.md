@@ -79,7 +79,7 @@ WHERE Ranked_Customers.Ranked <= 2
 - Revenue Powerhouses: Top customers drive 12-18% of territory sales (est.).
 - Global Consistency: All territories have clear high-value customer leaders.
 
-#### 🎯 Business Impact: Customer-Centric Growth
+#### 🎯 Business Implication: Customer-Centric Growth
 - Retention Priority: These customers are low-hanging fruit for revenue protection.
 - Upsell Potential: France/Germany’s top spenders ($11K+) may respond to premium offers.
 - Territory Strategy: Replicate success factors from top performers (e.g., Nichole Nara’s preferences).
@@ -144,36 +144,10 @@ Data shows that newest customers (RFM Group 5) — just 427 people — delivered
 
 ## Business Implication?
  This result from the data establishes the fact that the business's freshest leads are it's HIGHEST-VALUE customers. Losing them equates to losing 20%+ of revenue base overnight and their spending  behavior holds clues to replicating success
-
-### 3. Fetch the customers who made just one purchase
-```sql
-
-SELECT Purchases.* 
-FROM (
-      SELECT 
-            S.SalesOrderNumber,
-            C.FullName,
-            S.ProductKey,
-            P.ProductName,
-            ROW_NUMBER () OVER(PARTITION BY S.SalesOrderNumber ORDER BY S.SalesOrderNumber ) AS No_of_Purchase,
-            LEAD(S.SalesOrderNumber, 1, 'None') OVER(PARTITION BY S.SalesOrderNumber ORDER BY S.SalesOrderNumber DESC) AS "Next_Purchase?"
-      FROM Sales  AS s
-      INNER JOIN [Customers ] AS c
-      ON S.CustomerKey = C.CustomerKey
-      INNER JOIN Product AS  P 
-      ON P.ProductKey = S.ProductKey
-      GROUP BY S.SalesOrderNumber,
-        C.FullName,
-        S.ProductKey,
-        P.ProductName
-
- ) AS Purchases 
-
-WHERE Purchases.No_of_Purchase = 1 
-AND Purchases.[Next_Purchase?] = 'None'
-```
 ________________________________________
-### 4. What is the total Distribution and Percentage of One time Buyers Per Country
+
+
+### 3. What is the total Distribution and Percentage of One time Buyers Per Country
 
 ```sql
 WITH OneTimeBuyers AS (
@@ -223,13 +197,44 @@ ORDER BY 2 DESC
 Australia has the highest share of one-time buyers at 32.17%, closely followed by the United States at 31.7%. This suggests that these two markets may have retention challenges, with a significant portion of customers not returning after their first purchase.
 
 #### 🎯Business implication?
-The purpose of this query is to help stakeholders identify the distribution of one-time customers across different countries, providing insight into where customer retention may be weakest. By revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
+Australia & US lead with over 30% one-time buyers each - 2x higher than other markets. If just 10% of these buyers returned, revenue could grow by 10%. Revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
 
 __________________
 
-### 5. What is the total Distribution and Percentage of frequent Buyers Per Country
+### 4. What is the total Distribution and Percentage of frequent Buyers Per Country
 
+```sql
+	WITH FrequentBuyers AS (
+SELECT 
+		S.SalesOrderNumber,
+		C.CustomerKey,
+		C.FullName,
+		C.CustomerCountry,
+		COUNT(S.SalesOrderNumber) AS PurchaseCOunt
+FROM Sales  AS s
+INNER JOIN [Customers ] AS c
+ON S.CustomerKey = C.CustomerKey
+GROUP BY S.SalesOrderNumber,
+		 C.CustomerKey,
+		 C.FullName,
+		 C.CustomerCountry
+HAVING COUNT(S.SalesOrderNumber) >=2
 
+), 
+CountryCount AS (
+
+	SELECT CustomerCountry,
+	COUNT(*) As Return_Purchases
+	FROM FrequentBuyers
+	GROUP BY CustomerCountry
+)
+SELECT 
+		CC.CustomerCountry, 
+		cc.Return_Purchases,
+		ROUND(CAST(cc.Return_Purchases * 100.0/ (SELECT COUNT(*) FROM FrequentBuyers) AS FLOAT),2) AS [% of Returned Purchase]
+FROM CountryCount AS CC
+ORDER BY 2 DESC
+```
 | CustomerCountry |	Return_Purchases |	% of Single Purchase |
 | --------------- | ---------------------| -------------------------- |
 | United States |	6213 | 	36 |
@@ -243,11 +248,10 @@ __________________
 The United States leads in terms of repeat purchases, accounting for 36% of all return purchases—16 percentage points higher than Australia, the next closest territory at 20.34%. Canada follows in third place with 13.19%. A particularly valuable insight is that although Canada ranked fourth in the number of one-time buyers, it ranks third in return purchases, indicating a solid base of loyal customers despite a relatively high drop-off rate. This contrast suggests opportunities to further nurture and retain Canadian customers, who show strong potential for loyalty once engaged.
 
 #### 🎯Business implication ?
-The intent of this query is to enable stakeholders have a clear picture of consumers reception and perception of their products by measure of frequency. By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for informing regional retention strategies, allocating marketing resources effectively, and strengthening long-term customer relationships where the brand is gaining traction.
-
+By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for scaling or doubling down on winning retention tactics (e.g., loyalty programs) that drive high, Target one-time buyers with “second purchase” incentives (e.g., 15% off next order) and investigate why countries like  Germany/France lag (<10%) and test market-specific perks.
 __________________
 
-### 6.Analyze the year-over-year (YoY) sales growth trends across different countries to identify which markets experienced the most significant recoveries or declines?
+### 5.Analyze the year-over-year (YoY) sales growth trends across different countries to identify which markets experienced the most significant recoveries or declines?
 ```sql
 	-- Step One: Calculate the total sales and group by territory(Country) and Year
 WITH Territory_Sales AS (
@@ -283,17 +287,6 @@ SELECT YoY.CustomerCountry,
 		YoY."YoY % ▼▲"
 FROM YoY
 ```
-#### Methodology 
-- Aggregated Sales by Country and Year. Joined the Sales and Customers tables to link transactions to geographic territories
-- Retrieve Prior-Year Sales Using LAG() Window Functions. his created a column (Prev_Sales) containing the previous year’s sales for each country, enabling YoY comparisons
-- Compute Year-over-Year Growth by taing the variance of current year sales from the previous years and dividing by previous year sales and multiplied by 100 to get result as percentage  - [(Current_Year_Sales − Previous_Year_Sales) / Previous_Year_Sales] × 100
-
-#### Result 
-- 2022 Performance: France, Germany, and UK showed positive growth (52.90%, 15.56%, 26.54% respectively). Australia, Canada, and US experienced declines (-18.26%, -46.78%, -41.51%)
-  
-- 2023 Recovery/Expansion: All countries saw dramatic growth in 2023, with increases exceeding 100% YoY. The United States led with 278.79% growth. Canada and UK also showed particularly strong rebounds (250.30% and 205.83%)
-  
-- Also worth noting is that Countries that declined in 2022 saw the most dramatic rebounds in 2023 and France maintained consistent positive growth across both years.
 
 |CustomerCountry | 	Year	| YoY % ▼▲ |
 | --------------- | ----------- | -------- |
@@ -316,79 +309,19 @@ FROM YoY
 | United States |	2022 |	-41.51 |
 | United States	| 2023 |	278.79 |
 
+#### Result 
+- 2022 Performance: France, Germany, and UK showed positive growth (52.90%, 15.56%, 26.54% respectively). Australia, Canada, and US experienced declines (-18.26%, -46.78%, -41.51%)
 
+- 2023 Recovery/Expansion: All countries saw dramatic growth in 2023, with increases exceeding 100% YoY. The United States led with 278.79% growth. Canada and UK also showed particularly strong rebounds (250.30% and 205.83%)
+- Also worth noting is that Countries that declined in 2022 saw the most dramatic rebounds in 2023 and France maintained consistent positive growth across both years.
+
+#### Methodology 
+- Aggregated Sales by Country and Year. Joined the Sales and Customers tables to link transactions to geographic territories
+- Retrieve Prior-Year Sales Using LAG() Window Functions. his created a column (Prev_Sales) containing the previous year’s sales for each country, enabling YoY comparisons
+- Compute Year-over-Year Growth by taing the variance of current year sales from the previous years and dividing by previous year sales and multiplied by 100 to get result as percentage  - [(Current_Year_Sales − Previous_Year_Sales) / Previous_Year_Sales] × 100
 __________________
-### 6. Segment Customers by their Purchase intervals and compare their spending habits or Purchase value
-```sql
-WITH CTE_Purchase_Days AS (
-SELECT
-		
-		S.CustomerKey, 
-		C.FullName, 
-		s.OrderDate AS OrderDate,
-		S.SalesAmount,
-		LEAD(s.OrderDate) OVER(PARTITION BY S.CustomerKey ORDER BY s.OrderDate) AS NextDay
-FROM [Customers ]  AS C
-INNER JOIN Sales AS S 
-ON S.CustomerKey = C.CustomerKey
-),
 
-Calculated_Days_Bewtween_Purchases AS (
-SELECT  pd.CustomerKey,
-		pd.FullName,
-		FORMAT(pd.OrderDate, 'dd-MMM-yyyy') AS OrderDate,
-		FORMAT(pd.NextDay, 'dd-MMM-yyyy') AS Next_OrderDate,
-		ROUND(SUM(pd.SalesAmount),2) as Avg_SalesAmount,
-	    AVG(DATEDIFF(DAY, pd.OrderDate,pd.NextDay))  AS DaysBetween
-FROM CTE_Purchase_Days AS pd
-GROUP BY pd.CustomerKey,
-		pd.FullName,
-		FORMAT(pd.OrderDate, 'dd-MMM-yyyy') ,
-		FORMAT(pd.NextDay, 'dd-MMM-yyyy')
-)
-
-SELECT 
-	CASE 
-            WHEN DaysBetween <= 30 THEN '0-1 Month'
-            WHEN DaysBetween BETWEEN 31 AND 90 THEN '1-3 Months'
-            WHEN DaysBetween BETWEEN 91 AND 180 THEN '3-6 Months'
-            WHEN DaysBetween BETWEEN 181 AND 270 THEN '6-9 Months'
-            WHEN DaysBetween BETWEEN 271 AND 365 THEN '9-12 Months'
-            ELSE '1 Year and Above'
-        END AS Customers_Purchase_Interval,
-		COUNT(*) Purchase_Count,
-		ROUND(AVG(cd.Avg_SalesAmount),2) AS Average_Purchase_Value
-FROM Calculated_Days_Bewtween_Purchases AS cd
-GROUP BY CASE 
-            WHEN DaysBetween <= 30 THEN '0-1 Month'
-            WHEN DaysBetween BETWEEN 31 AND 90 THEN '1-3 Months'
-            WHEN DaysBetween BETWEEN 91 AND 180 THEN '3-6 Months'
-            WHEN DaysBetween BETWEEN 181 AND 270 THEN '6-9 Months'
-            WHEN DaysBetween BETWEEN 271 AND 365 THEN '9-12 Months'
-            ELSE '1 Year and Above'
-        END
-ORDER BY 3 DESC
-```
-
-| Customers_Purchase_Interval	| Purchase_Count |	Average_Purchase_Value|
-|-------------------------------| ---------------| ---------------------------|
-| 9-12 Months |	919 |	1676.23 |
-| 6-9 Months |	841 |	881.67 |
-| 0-1 Month | 	18355 |	766.81 |
-| 1 Year and Above |	21386 |	594.65 |
-| 3-6 Months | 1289 |	376.86 |
-| 1-3 Months |	1091 |	157.22 |
-
-#### 🔍 Insight
-Customers with purchase intervals of 9–12 months have the highest average order value at $1,676.23, followed by those purchasing every 6–9 months at $881.67. In contrast, customers purchasing most frequently—within 0–1 month and 1 year and above—record the highest purchase volumes at 18,355 and 21,386 respectively, but with lower average order values of $766.81 and $594.65
-
-
-#### 🎯 Why This Is Relevant
-This is meant to help stakeholders understand the relationship between purchase frequency and order value, revealing that less frequent buyers tend to spend more per transaction, while frequent buyers contribute more to overall sales volume. These patterns can inform segmentation strategies, such as nurturing high-value, infrequent buyers with personalized offers, while also reinforcing loyalty programs for frequent, lower-value buyers to sustain engagement and drive lifetime value.
-
-________________________________
-
-#### 7. What is the Percentage of customers whose total sales increased from their previous year 
+#### 6. What is the Percentage of customers whose total sales increased from their previous year 
 ``` sql
 
 WITH Customer_Value AS (
@@ -448,7 +381,7 @@ FROM Current_Greater_Than_Previous
 #### Insight 🔍
 Out of 18,000+ customers, only 2,478 (13.4%) showed increased year-over-year spending - meaning 9 out of 10 customers spent less than the previous period or don't even returned for a purchase.
 
-#### Why is this critical?
+#### Business Implication?
 This signals dangerous over-reliance on new customer acquisition (costing 5-25x more than retention) while 86.6% of existing customers are actively disengaging - a revenue leak that threatens long-term profitability unless addressed through targeted loyalty strategies.
 
 ### 8. How effective were monthly campaigns at driving customer growth?
@@ -571,3 +504,12 @@ These products are the company's cash cows and scaling marketing & inventory for
 (Current Month − Previous Month) / Previous Month.
 
 - Filtered for positive MoM changes to identify growth trends. Counted occurrences per product to find consistent top performers. Repeated for negative MoM to flag declining products.
+
+## Recommendations 
+#### 3. ✅ Targeted Win-Back Campaigns
+Offer time-sensitive discounts to one-time buyers in Australia/US within 60 days of purchase.
+
+#### 4.  Retention Expansion
+Frequency reveals affinity - USA, AUstrialia,  Canada are critical markets telling us where to double down."
+- 💡Scale What Works: Analyze top-performing US, Austrialia and Canada's customer segments.Leverage existing loyal base for referral programs. Also Target one-time buyers with "second purchase" incentives and replicate successful loyalty triggers in other markets.
+
