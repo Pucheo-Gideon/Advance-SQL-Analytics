@@ -2,35 +2,34 @@
 
 ## Project Overview
 
-Major types of Data Analysis and roles in Data Analytics requires the application of SQL to get the job done and the mastery of SQL has an unopposable argument. 
-The essence of this project is particularly focused on how Window Functions are a powerful feature within SQL and how their granular capabilities give more analytical 
-power to Data Analyst, Scientist and an Engineers for solving critical business problems.
+This project leverages the AdventureWorks dataset to perform a comprehensive business intelligence analysis, focusing on customer segmentation, sales performance, market trends, and product growth. By applying SQL-based analytics, we uncover actionable insights to optimize marketing strategies, improve customer retention, and enhance revenue growth.
 
-## Data Source
-The used for this project is the popular AdventureWorks2021 culled from the Microsoft learning platform. The Data came with multiple tables but for the sake of this project, 
-I reduce the number of tables to work with. The tables for this projects includes: Sales, Customers, Product and Territory. 
+The analysis addresses key business challenges, including:
+- Customer Value Identification (Top customers, RFM segmentation).
+- Geographic Sales Performance (YoY trends, buyer distribution by country).
+- Campaign & Product Effectiveness (Monthly active user growth, product MoM trends.
 
--  The Sales table has 13 columns and over 58,191 rows. 
--  Product table has 13 columns and over 600 rows of unique records
--  Customers table has 20 columns and over 18,000 Unique Cutomers
--  Sales Territory table comprises of 4 columns and 11 distinct
+## Objectives
+- Identify high-value customers to prioritize retention and personalized engagement.
+- Evaluate market performance across regions to allocate resources effectively.
+- Assess promotional campaign success in driving customer acquisition and retention.
+- Determine product performance trends to optimize inventory and marketing strategies.
   
-Micrososft SQL Server is the RDBMS I used for the entirety of this project to solve the business problems. [You can click here to watch how to download Ms SQL Server](https://youtu.be/ndNE3Z8kKjU?si=OolaSBBjRxnWxdrI)
+## Data Source
+This project utilizes the AdventureWorks2021 dataset from Microsoft's learning platform. While the original database contains multiple tables, this analysis focuses on four key tables:
+- Sales (58,191+ transactions across 13 columns)
+- Customers (18,000+ unique customer records across 20 columns)
+- Product (600+ unique products across 13 columns)
+- Territory (11 distinct regions across 4 columns)
 
-## Data Cleaning and Preparation 
-The Adventureworks tables were pretty much in a good shape and did not require extensive data cleaning. However due diligence of profiling and exploring the entire tables was observed to ensure all the tables were in the best condition possible for the analysis.
+The analysis was conducted using Microsoft SQL Server as the primary RDBMS.
 
-## Exploratory Data Analysis
-The relevants questions that anchors this project and driving how we explore the dataset and answer critiacal business problems are listed below. Each is paired with its SQL query and results to map the journey from raw data to insight.
-
-## Functions Use
-Some of the Advance approaches used in this Project include 
-1.  Aggregation function such as COUNT(),SUM, AVG(), Etc
-2.  Subqueries
-3.  Common Table Expressions - CTE's
-4.  CASE Statement
-5.  SQL Analytics Functions such as ROW(), DENSE_RANK(), LEAD(), LAG
-6.  Value Functions Such as NTILE, FIRST_VALUE, LAST_VALUE ()
+## Data Preparation
+The dataset required minimal cleaning due to its well-structured nature. However, comprehensive data profiling and exploratory analysis were performed to:
+- Validate data integrity and consistency
+- Ensure proper table relationships for accurate joins
+- Confirm absence of critical missing values
+__________________________________________________________________________
 
 # Retail Transactions business Questions 
 ### 1. Rank Top 2 customers by total sales within each territory
@@ -146,8 +145,131 @@ Data shows that newest customers (RFM Group 5) — just 427 people — delivered
  This result from the data establishes the fact that the business's freshest leads are it's HIGHEST-VALUE customers. Losing them equates to losing 20%+ of revenue base overnight and their spending  behavior holds clues to replicating success
 ________________________________________
 
+### 3. How effective were monthly campaigns at driving customer growth?
+```sql
+WITH Distinct_Customers AS  (
 
-### 3. What is the total Distribution and Percentage of One time Buyers Per Country
+	SELECT	
+		DATEPART(YEAR, OrderDate) AS Year, 
+		DATEPART(MONTH, OrderDate) AS Month_Number,
+		DATENAME(MONTH, OrderDate) AS Month_Name,
+		COUNT(DISTINCT Customerkey) AS Distinct_Customers
+	FROM Sales 
+	GROUP BY DATEPART(YEAR, OrderDate),
+		 DATEPART(MONTH, OrderDate), 
+		 DATENAME(MONTH, OrderDate) 
+	
+
+),
+
+--Step Two: In a CTE and using the LAG() function, get the previous month distribution of distinct customers. 
+Prev_Month_users AS (
+SELECT *, 
+	LAG( DC.Distinct_Customers) OVER( PARTITION BY DC.Year ORDER BY DC.Month_Number, DC.Year)  AS Prev_Month_Count
+FROM Distinct_Customers AS DC
+)
+
+-- Get the MoM % ▲▼ using the formula: (Current - Previous)/Previous
+SELECT
+      PM.Year, 
+      PM.Month_Name,
+      PM.Distinct_Customers,
+      ROUND((CAST((PM.Distinct_Customers - PM.Prev_Month_Count) AS FLOAT)/PM.Prev_Month_Count) * 100.0,2) AS "MoM % ▲▼"
+FROM Prev_Month_users AS PM
+```
+### 🔍 Key Insights
+#### 🚀 Explosive Growth in 2023
+- February 2023 saw a 195.3% MoM increase in MAU – a massive leap!
+- Sustained momentum: June 2023 (+24.66%), November 2023 (+8.28%).
+#### 📈📉 Seasonality & Volatility
+- Peaks: June was consistently strong:
+- 2021: +39.05% | 2022: +70.98% (🎯 Prime campaign months?)
+- Troughs: Mid-year slumps:
+- July 2021: -20% | July 2023: -12.76% (🌧️ Seasonal dip?)
+#### 🛠️ Stabilization Trend
+- 2023 had fewer wild swings vs. 2021–2022, suggesting:
+- Better user retention 📊
+- Optimized marketing spend 💰
+
+### Business implications
+Tracking Monthly Active Users (MAU) growth is critical for businesses running recurring campaigns or promotions. By analyzing month-over-month (MoM) changes in distinct customers, we can quantify the effectiveness of marketing efforts, identify seasonal patterns, and pinpoint periods of exceptional growth or decline. This analysis covers January 2021 through December 2023, revealing how customer engagement evolved across 36 months—highlighting successes (like the 195% surge in February 2023) and areas needing intervention (such as March 2022’s -29.54% drop).
+
+#### Methodology
+1.	Aggregate Distinct Users: Counted unique CustomerKey values grouped by month and year using DATEPART and DATENAME.
+2.	Retrieve Prior Month Counts: Applied the LAG() window function to partition data by year and order by month, creating a Prev_Month_Count column for comparison.
+3.	Calculate MoM Growth: Computed percentage change using the formula: ((Current - Previous)/Previous) * 100.0
+
+
+________________________________________
+
+#### 4. What is the Percentage of customers whose total sales increased from their previous year 
+``` sql
+
+WITH Customer_Value AS (
+SELECT -- Step One: Create a CTE and aggregate each Customer total purchase value, grouped by Customer Name, Key and year 
+		C.CustomerKey,
+		c.FullName,
+		YEAR(S.OrderDate) AS Year,
+		SUM(s.SalesAmount) As Sales_Value
+FROM [Customers ] AS C
+INNER JOIN Sales AS S 
+ON C.CustomerKey = S.CustomerKey
+GROUP BY  C.FullName,
+		 YEAR(S.OrderDate),
+		 C.CustomerKey
+),
+
+Yearly_Value AS (
+SELECT	-- Step Two: Create a second CTE. Using SUM Window Function, Partition aggregated sales value per customer by year and customer key 
+		Cv.CustomerKey,
+		Cv.FullName, 
+		CV.Year,
+		ROUND(CAST(SUM(Cv.Sales_value) OVER (PARTITION BY   CV.Year, Cv.CustomerKey ORDER BY CV.Year, Cv.Sales_value) AS FLOAT),2) AS Customer_Yearly_Value,
+		DENSE_RANK() OVER (PARTITION BY  Cv.CustomerKey ORDER BY CV.Year,  Cv.Sales_Value) AS Rank
+FROM Customer_Value AS Cv
+) ,
+
+Current_Year_vs_Previous AS (
+SELECT *,			-- Step Three: Create a third CTE. Using LAG function, fetch each customers previous year total purchase value. Using LAST_VALUE function 
+					-- within each customer partition,grab the last total purchase value within that window, representing customer's latest year total purchase value
+		LAG(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Prev_Year_Value,
+		LAST_VALUE(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Current_Year_Value
+FROM Yearly_Value  AS Yv
+),
+
+--- Step Four: Fetch from the third chained CTE the Customers'Name, Previous and Latest Year Sales Value. Using the WHERE Clause filter and return only the Customers whose 
+--- Current Year total purchase value is greater than the previous total Purchase value
+Current_Greater_Than_Previous AS (
+SELECT  Cp.FullName, 
+		Cp.Prev_Year_value, 
+		Cp.Current_Year_Value
+FROM Current_Year_vs_Previous AS Cp
+WHERE Cp.Prev_Year_value IS NOT NULL
+	  AND Cp.Current_Year_Value > Cp.Prev_Year_value
+	  )
+
+SELECT COUNT(*) AS High_YoY_Customers,
+		ROUND(CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM [Customers ]) AS FLOAT),2) AS Prct_of_High_YoY_Customers
+		--(SELECT COUNT(*) FROM [Customers ]) As Total_Customers
+FROM Current_Greater_Than_Previous 
+```
+
+##### Result 
+| High_YoY_Customers |	Prct_of_High_YoY_Customers |
+| ------------------- | ----------------------------|
+| 2478	| 13.4 |
+
+#### Insight 🔍
+Out of 18,000+ customers, only 2,478 (13.4%) showed increased year-over-year spending - meaning 9 out of 10 customers spent less than the previous period or don't even returned for a purchase.
+
+#### Business Implication?
+This signals dangerous over-reliance on new customer acquisition (costing 5-25x more than retention) while 86.6% of existing customers are actively disengaging - a revenue leak that threatens long-term profitability unless addressed through targeted loyalty strategies.
+________________________________________
+
+# Markets/Geographic Sales Performance
+
+
+### 5. What is the total Distribution and Percentage of One time Buyers Per Country
 
 ```sql
 WITH OneTimeBuyers AS (
@@ -199,9 +321,10 @@ Australia has the highest share of one-time buyers at 32.17%, closely followed b
 #### 🎯Business implication?
 Australia & US lead with over 30% one-time buyers each - 2x higher than other markets. If just 10% of these buyers returned, revenue could grow by 10%. Revealing which countries have the highest proportion of customers making only a single purchase, stakeholders can pinpoint regions that may require targeted re-engagement strategies, localized marketing improvements, or service enhancements.
 
-__________________
+___________________________________________________________________
 
-### 4. What is the total Distribution and Percentage of frequent Buyers Per Country
+
+### 6. What is the total Distribution and Percentage of frequent Buyers Per Country
 
 ```sql
 	WITH FrequentBuyers AS (
@@ -249,9 +372,9 @@ The United States leads in terms of repeat purchases, accounting for 36% of all 
 
 #### 🎯Business implication ?
 By analyzing the percentage and total number of return purchases per country, the business can assess customer satisfaction, loyalty, and product-market fit in each territory. This is vital for scaling or doubling down on winning retention tactics (e.g., loyalty programs) that drive high, Target one-time buyers with “second purchase” incentives (e.g., 15% off next order) and investigate why countries like  Germany/France lag (<10%) and test market-specific perks.
-__________________
+________________________________________________
 
-### 5.Analyze the year-over-year (YoY) sales growth trends across different countries to identify which markets experienced the most significant recoveries or declines?
+### 7. Analyze the year-over-year (YoY) sales growth trends across different countries to identify which markets experienced the most significant recoveries or declines?
 ```sql
 	-- Step One: Calculate the total sales and group by territory(Country) and Year
 WITH Territory_Sales AS (
@@ -319,126 +442,11 @@ FROM YoY
 - Aggregated Sales by Country and Year. Joined the Sales and Customers tables to link transactions to geographic territories
 - Retrieve Prior-Year Sales Using LAG() Window Functions. his created a column (Prev_Sales) containing the previous year’s sales for each country, enabling YoY comparisons
 - Compute Year-over-Year Growth by taing the variance of current year sales from the previous years and dividing by previous year sales and multiplied by 100 to get result as percentage  - [(Current_Year_Sales − Previous_Year_Sales) / Previous_Year_Sales] × 100
-__________________
+______________________________________________________________________
 
-#### 6. What is the Percentage of customers whose total sales increased from their previous year 
-``` sql
+# Campaign & Product Performance
 
-WITH Customer_Value AS (
-SELECT -- Step One: Create a CTE and aggregate each Customer total purchase value, grouped by Customer Name, Key and year 
-		C.CustomerKey,
-		c.FullName,
-		YEAR(S.OrderDate) AS Year,
-		SUM(s.SalesAmount) As Sales_Value
-FROM [Customers ] AS C
-INNER JOIN Sales AS S 
-ON C.CustomerKey = S.CustomerKey
-GROUP BY  C.FullName,
-		 YEAR(S.OrderDate),
-		 C.CustomerKey
-),
-
-Yearly_Value AS (
-SELECT	-- Step Two: Create a second CTE. Using SUM Window Function, Partition aggregated sales value per customer by year and customer key 
-		Cv.CustomerKey,
-		Cv.FullName, 
-		CV.Year,
-		ROUND(CAST(SUM(Cv.Sales_value) OVER (PARTITION BY   CV.Year, Cv.CustomerKey ORDER BY CV.Year, Cv.Sales_value) AS FLOAT),2) AS Customer_Yearly_Value,
-		DENSE_RANK() OVER (PARTITION BY  Cv.CustomerKey ORDER BY CV.Year,  Cv.Sales_Value) AS Rank
-FROM Customer_Value AS Cv
-) ,
-
-Current_Year_vs_Previous AS (
-SELECT *,			-- Step Three: Create a third CTE. Using LAG function, fetch each customers previous year total purchase value. Using LAST_VALUE function 
-					-- within each customer partition,grab the last total purchase value within that window, representing customer's latest year total purchase value
-		LAG(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Prev_Year_Value,
-		LAST_VALUE(Yv.Customer_Yearly_Value) OVER (PARTITION BY Yv.CustomerKey ORDER BY   Yv.CustomerKey) AS Current_Year_Value
-FROM Yearly_Value  AS Yv
-),
-
---- Step Four: Fetch from the third chained CTE the Customers'Name, Previous and Latest Year Sales Value. Using the WHERE Clause filter and return only the Customers whose 
---- Current Year total purchase value is greater than the previous total Purchase value
-Current_Greater_Than_Previous AS (
-SELECT  Cp.FullName, 
-		Cp.Prev_Year_value, 
-		Cp.Current_Year_Value
-FROM Current_Year_vs_Previous AS Cp
-WHERE Cp.Prev_Year_value IS NOT NULL
-	  AND Cp.Current_Year_Value > Cp.Prev_Year_value
-	  )
-
-SELECT COUNT(*) AS High_YoY_Customers,
-		ROUND(CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM [Customers ]) AS FLOAT),2) AS Prct_of_High_YoY_Customers
-		--(SELECT COUNT(*) FROM [Customers ]) As Total_Customers
-FROM Current_Greater_Than_Previous 
-```
-
-##### Result 
-| High_YoY_Customers |	Prct_of_High_YoY_Customers |
-| ------------------- | ----------------------------|
-| 2478	| 13.4 |
-
-#### Insight 🔍
-Out of 18,000+ customers, only 2,478 (13.4%) showed increased year-over-year spending - meaning 9 out of 10 customers spent less than the previous period or don't even returned for a purchase.
-
-#### Business Implication?
-This signals dangerous over-reliance on new customer acquisition (costing 5-25x more than retention) while 86.6% of existing customers are actively disengaging - a revenue leak that threatens long-term profitability unless addressed through targeted loyalty strategies.
-
-### 8. How effective were monthly campaigns at driving customer growth?
-```sql
-WITH Distinct_Customers AS  (
-
-	SELECT	
-		DATEPART(YEAR, OrderDate) AS Year, 
-		DATEPART(MONTH, OrderDate) AS Month_Number,
-		DATENAME(MONTH, OrderDate) AS Month_Name,
-		COUNT(DISTINCT Customerkey) AS Distinct_Customers
-	FROM Sales 
-	GROUP BY DATEPART(YEAR, OrderDate),
-		 DATEPART(MONTH, OrderDate), 
-		 DATENAME(MONTH, OrderDate) 
-	
-
-),
-
---Step Two: In a CTE and using the LAG() function, get the previous month distribution of distinct customers. 
-Prev_Month_users AS (
-SELECT *, 
-	LAG( DC.Distinct_Customers) OVER( PARTITION BY DC.Year ORDER BY DC.Month_Number, DC.Year)  AS Prev_Month_Count
-FROM Distinct_Customers AS DC
-)
-
--- Get the MoM % ▲▼ using the formula: (Current - Previous)/Previous
-SELECT
-      PM.Year, 
-      PM.Month_Name,
-      PM.Distinct_Customers,
-      ROUND((CAST((PM.Distinct_Customers - PM.Prev_Month_Count) AS FLOAT)/PM.Prev_Month_Count) * 100.0,2) AS "MoM % ▲▼"
-FROM Prev_Month_users AS PM
-```
-### 🔍 Key Insights
-#### 🚀 Explosive Growth in 2023
-- February 2023 saw a 195.3% MoM increase in MAU – a massive leap!
-- Sustained momentum: June 2023 (+24.66%), November 2023 (+8.28%).
-#### 📈📉 Seasonality & Volatility
-- Peaks: June was consistently strong:
-- 2021: +39.05% | 2022: +70.98% (🎯 Prime campaign months?)
-- Troughs: Mid-year slumps:
-- July 2021: -20% | July 2023: -12.76% (🌧️ Seasonal dip?)
-#### 🛠️ Stabilization Trend
-- 2023 had fewer wild swings vs. 2021–2022, suggesting:
-- Better user retention 📊
-- Optimized marketing spend 💰
-
-### Why this is Relevant 
-Tracking Monthly Active Users (MAU) growth is critical for businesses running recurring campaigns or promotions. By analyzing month-over-month (MoM) changes in distinct customers, we can quantify the effectiveness of marketing efforts, identify seasonal patterns, and pinpoint periods of exceptional growth or decline. This analysis covers January 2021 through December 2023, revealing how customer engagement evolved across 36 months—highlighting successes (like the 195% surge in February 2023) and areas needing intervention (such as March 2022’s -29.54% drop).
-
-#### Methodology
-1.	Aggregate Distinct Users: Counted unique CustomerKey values grouped by month and year using DATEPART and DATENAME.
-2.	Retrieve Prior Month Counts: Applied the LAG() window function to partition data by year and order by month, creating a Prev_Month_Count column for comparison.
-3.	Calculate MoM Growth: Computed percentage change using the formula: ((Current - Previous)/Previous) * 100.0
-
-### 9.  What products achieve the highest positive MoM performance in 2021
+### 8.  What products achieve the highest positive MoM performance in 2021
 ```sql 
 	
  WITH Territory_Sales AS ( -- Join Sales table to the territory to retrieve Territory name. Aggregate sales for each territry and group by Country and Months
@@ -504,12 +512,99 @@ These products are the company's cash cows and scaling marketing & inventory for
 (Current Month − Previous Month) / Previous Month.
 
 - Filtered for positive MoM changes to identify growth trends. Counted occurrences per product to find consistent top performers. Repeated for negative MoM to flag declining products.
+____________________________________________________________________________________
 
-## Recommendations 
-#### 3. ✅ Targeted Win-Back Campaigns
-Offer time-sensitive discounts to one-time buyers in Australia/US within 60 days of purchase.
+### 9. What is the percentage of products in inventory with the longest sales streak (12 consecutive months in 2023?
+```sql 
+	WITH MonthlySales AS ( -- Get the distinct month a product was sold 
+		SELECT P.ProductKey, 
+				P.ProductName,
+				CAST(DATEFROMPARTS(YEAR(S.OrderDate), Month(S.Orderdate), 1) AS DATE) AS Sales_Month
+		FROM Sales AS  S
+		INNER JOIN Product  AS P ON S.ProductKey = p.ProductKey
+		WHERE YEAR(ORDERDATE) = '2023'
+		GROUP BY  P.ProductKey, 
+				  P.ProductName,
+				  YEAR(S.OrderDate),
+				  Month(S.Orderdate)
+), 
 
-#### 4.  Retention Expansion
-Frequency reveals affinity - USA, AUstrialia,  Canada are critical markets telling us where to double down."
-- 💡Scale What Works: Analyze top-performing US, Austrialia and Canada's customer segments.Leverage existing loyal base for referral programs. Also Target one-time buyers with "second purchase" incentives and replicate successful loyalty triggers in other markets.
+WithLag AS ( -- Use lag to get the previous month
 
+	SELECT Ms.ProductKey, 
+			Ms.ProductName, 
+			Ms.Sales_Month, 
+			LAG(MS.Sales_Month) OVER (PARTITION BY ProductKey ORDER BY Ms.Sales_Month) AS PrevMonth
+	FROM MonthlySales AS Ms
+),
+
+WithStreakFlag AS ( -- Flags a new streak when the month isn't consecutive
+
+	SELECT *, 
+			CASE 
+				WHEN DATEDIFF(MONTH, WL.PrevMonth, WL.Sales_month) = 1 THEN 0
+				ELSE 1
+			END AS Flag
+	FROM WithLag  AS WL
+), 
+
+StreakGroups AS ( -- Create streak groups using SUM(---) Over
+	SELECT *, 
+			SUM(Flag) OVER (PARTITION BY Productkey ORDER BY  SaleS_Month ROWS UNBOUNDED PRECEDING) AS StreakGroupID
+	FROM WithStreakFlag
+),
+StreakCounts AS (
+	SELECT 
+		Productkey, 
+		ProductName, 
+		StreakGroupID, 
+		COUNT (*) AS StreakLength 
+	FROM StreakGroups
+	GROUP BY ProductKey, ProductName, StreakGroupID
+),
+
+MaxStreaks AS (
+	SELECT ProductKey, 
+			ProductName,
+			MAX(StreakLength) AS LongestStreakMonths
+	FROM StreakCounts 
+	GROUP BY ProductKey, ProductName
+)
+
+SELECT ROUND(CAST(COUNT(*)* 100.0/(SELECT COUNT(*) FROM Product) AS FLOAT),2) AS "% of Product with 12month salels streak"
+FROM MaxStreaks
+WHERE MaxStreaks.LongestStreakMonths = 12
+```
+| Metric                                | Value |
+|---------------------------------------|-------|
+| % of Products with 12-Month Sales Streak | 15.84  |
+
+#### 📊 Result:
+Out of 600+ products, only 98 (~15%) maintained consistent sales across every month in 2021.
+
+#### 💡 Business implication:
+These products represent what customers demand the most. Ensuring they're always in stock can:
+1. Prevent lost sales and revenue.
+2. Improve customer satisfaction.
+3. Reduce the risk of churn
+
+_______________________________________________________________________________________
+
+## Recommendations
+
+1. Top Customers by Territory: The top 2 customers per region contribute disproportionately to revenue - focusing retention efforts here and implement VIP programs for top buyers can enhance loyalty.
+2. RFM: RFM segmentation reveals untapped potential in mid-tier customers. Upsell premium products and Launch re-engagement campaigns.
+3. YoY Customer Sales Growth: Customers with rising YoY sales indicate strong loyalty - capitalize on this trend by rewarding customers with increasing spend (e.g., discounts on next purchase).
+4. YoY Market Trends: Some regions (France) show stable growth, while others (US) rebound dramatically - adjust strategies accordingly. For High-Growth Markets (e.g., US, Canada): Increase ad spend. For declining markets (e.g., Australia 2022): Investigate external factors (competition, economy).
+5. Buyer Distribution by Country: Buyer frequency varies significantly by country - localized strategies are essential. For High One-Time Buyers, improve post-purchase engagement (e.g., follow-up emails) and Introduce subscription models for High Frequent Buyers:
+6. Monthly Active Users (MAU) Growth: MAU trends reveal seasonality - plan inventory and marketing around these patterns. Double down on successful campaigns on Peak Months (June) and run retention-focused promotions for dipped Months (July).
+7. Top-Performing Products (MoM Growth): Product performance fluctuates - real-time tracking helps optimize stock levels. Best Sellers (High MoM) should be bundle with slower-moving products and discount or reposition declining products. The products with consecutive month sales streaks - which indicates customers' high and frequent demand - should be sufficiently stock-up to ensure  high availability during demands, maintain customers' satisfaction so as to ensure steady revenue generation from those products.
+
+## Conclusion
+
+The range of this analysis covers critical aspects of AdventureWorks business and extract valuable insights that provides a data-driven roadmap for AdventureWorks to:
+1. Boost customer retention through targeted RFM strategies.
+2. Optimize regional investments based on YoY growth trends.
+3. Enhance campaign ROI by aligning with MAU and product trends.
+
+By implementing these recommendations, stakeholders can increase revenue, reduce churn, and make informed strategic decisions.
